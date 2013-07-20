@@ -23,10 +23,11 @@
 
     var _P = _jsDataStore.prototype;
 
-    _P._pageindex = function (recordindex) {
-        return { index: (Math.floor(recordindex / this._config.pageLength) * this._config.pageLength), offset: (recordindex % this._config.pageLength) };
-    }
+    //_P._pageindex = function (recordindex) {
+    //    return { index: (Math.floor(recordindex / this._config.pageLength) * this._config.pageLength), offset: (recordindex % this._config.pageLength) };
+    //}
 			
+    _P._cache = [];
 
     _P._page = function (index, data, isLast, length) {
 
@@ -47,50 +48,60 @@
         this._firstpageCB();
         this._currentpage = index;
 
-        return (new this._page(index, data, last, this._config.pageLength));
+        return (new this._page( (index / this._config.pageLength), data, last, this._config.pageLength));
 
     };
 
     _P._lastpage = function () {
 
-        var index = this._datasource.length - this._config.pageLength,
-            data = this._datasource.slice(index, (index + this._config.pageLength));
+        var index = Math.floor(this._datasource.length / this._config.pageLength) * this._config.pageLength,
+            data = this._datasource.slice(index);
 
         this._lastpageCB();
         this._currentpage = index; //updates datastore page index
-            
-        return (new this._page(index, data, true, this._config.pageLength));
+        //console.log(data);
+        return (new this._page((index / this._config.pageLength), data, true, this._config.pageLength));
 
     };
 
     _P._nextpage = function () {
 
         var index = this._currentpage + this._config.pageLength, //look ahead
-            nindex = this._datasource.length - this._config.pageLength, //more pages ?
+            nindex = this._datasource.length - this._config.pageLength,
             data = [],
             last = false;
 
-        if (index >= (nindex)) {
+        if (index < this._datasource.length) {
 
-            index = (nindex);
+            if (index >= (nindex)) {
 
-            if (index <= 0)
-                index = 0;
+                console.log('index', index);
+                console.log('currentpage', this._currentpage);
+                console.log('nindex', nindex);
 
-            data = this._datasource.slice(index, (index + this._config.pageLength));
-            last = true;
+                data = this._datasource.slice(index);
+                //console.log('data', data);
+                //index = (0 - this._config.pageLength); //circle back to page 1
+                index = this._currentpage; //index taken 1 step back, to prevent an empty last page
+                console.log('index after', index);
+                last = true;
 
-            this._lastpageCB();
+                this._lastpageCB();
+
+            } else {
+                data = this._datasource.slice(index, (index + this._config.pageLength));
+            }
+
+            this._currentpage = index; //updates datastore page index
+
+            return (new this._page((index / this._config.pageLength), data, last, this._config.pageLength));
 
         } else {
-            data = this._datasource.slice(index, (index + this._config.pageLength));
+            return (this._lastpage());
         }
 
-        this._currentpage = index; //updates datastore page index
-
-        return (new this._page(index, data, last, this._config.pageLength));
-
     };
+
 
     _P._prevpage = function () {
 
@@ -118,7 +129,7 @@
 
         this._currentpage = index; //updates datastore page index
 
-        return (new this._page(index, data, last, this._config.pageLength));
+        return (new this._page((index / this._config.pageLength), data, last, this._config.pageLength));
 
     };
 
